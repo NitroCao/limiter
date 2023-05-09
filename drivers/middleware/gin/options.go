@@ -33,7 +33,7 @@ func DefaultErrorHandler(c *gin.Context, err error) {
 }
 
 // LimitReachedHandler is an handler used to inform when the limit has exceeded.
-type LimitReachedHandler func(c *gin.Context)
+type LimitReachedHandler func(c *gin.Context) bool
 
 // WithLimitReachedHandler will configure the Middleware to use the given LimitReachedHandler.
 func WithLimitReachedHandler(handler LimitReachedHandler) Option {
@@ -43,8 +43,9 @@ func WithLimitReachedHandler(handler LimitReachedHandler) Option {
 }
 
 // DefaultLimitReachedHandler is the default LimitReachedHandler used by a new Middleware.
-func DefaultLimitReachedHandler(c *gin.Context) {
+func DefaultLimitReachedHandler(c *gin.Context) bool {
 	c.String(http.StatusTooManyRequests, "Limit exceeded")
+	return false
 }
 
 // KeyGetter will define the rate limiter key given the gin Context.

@@ -158,4 +158,49 @@ func TestHTTPMiddleware(t *testing.T) {
 			is.Equal(resp.Code, http.StatusTooManyRequests)
 		}
 	}
+
+	//
+	// Test LimitReachedHandler
+	//
+	store = memory.NewStore()
+	is.NotZero(store)
+	middleware = gin.NewMiddleware(limiter.New(store, rate), gin.WithLimitReachedHandler(func(c *libgin.Context) bool { return true }))
+	is.NotZero(middleware)
+
+	router = libgin.New()
+	router.Use(middleware)
+	router.GET("/", func(c *libgin.Context) {
+		c.String(http.StatusOK, "hello")
+	})
+	for i := int64(1); i < clients; i++ {
+		resp := httptest.NewRecorder()
+		router.ServeHTTP(resp, request)
+		is.Equal(http.StatusOK, resp.Code, strconv.FormatInt(i, 10))
+	}
+
+	store = memory.NewStore()
+	is.NotZero(store)
+	middleware = gin.NewMiddleware(limiter.New(store, rate), gin.WithLimitReachedHandler(func(c *libgin.Context) bool {
+		c.Status(http.StatusTooManyRequests)
+		return false
+	}))
+	is.NotZero(middleware)
+
+	router = libgin.New()
+	router.Use(middleware)
+	router.GET("/", func(c *libgin.Context) {
+		c.String(http.StatusOK, "hello")
+	})
+	success = 10
+	for i := int64(1); i < clients; i++ {
+		resp := httptest.NewRecorder()
+		router.ServeHTTP(resp, request)
+		if i <= success {
+			is.Equal(http.StatusOK, resp.Code, strconv.FormatInt(i, 10))
+			is.Equal("hello", resp.Body.String())
+		} else {
+			is.Equal(http.StatusTooManyRequests, resp.Code)
+			is.Empty(resp.Body.String())
+		}
+	}
 }
